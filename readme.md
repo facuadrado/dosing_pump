@@ -1,5 +1,6 @@
 # Reef Automatic Dosing Pump
 This project is a work in progress for an automatic dosing pump for reef aquariums. It runs on a Raspberry Pi and is designed to help you maintain the perfect balance of nutrients in your reef tank.
+![IMG_0695](https://github.com/user-attachments/assets/97f26f6b-104b-410d-89c0-19fd33c77315)
 
 ## Requirements
 - Raspberry Pi
