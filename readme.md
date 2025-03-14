@@ -37,5 +37,16 @@ Bash into container
 docker exec -it <container-id> /bin/Bash
 ```
 
+Alternatively run container using docker compose
+```shell
+docker compose up -d
+```
+
+to force a build run
+```shell
+docker compose up --build -d
+```
+
+
 Access API at:
 * `http://<raspberry-pi-ip>:8000/docs`

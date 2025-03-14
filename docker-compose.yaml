@@ -1,0 +1,15 @@
+services:
+  fastapi-doser:
+    build: 
+      context: .
+      dockerfile: Dockerfile
+    container_name: fastapi-doser
+    privileged: true
+    restart: unless-stopped
+    volumes:
+      - doser-mnt:/mnt
+    ports:
+      - "8000:8000"
+
+volumes:
+  doser-mnt:
