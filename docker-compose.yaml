@@ -3,6 +3,7 @@ services:
     build: 
       context: .
       dockerfile: Dockerfile
+    image: fastapi-doser:user
     container_name: fastapi-doser
     privileged: true
     restart: unless-stopped
