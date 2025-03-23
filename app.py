@@ -39,7 +39,7 @@ PUMP_CALIBRATION_ML_PER_SECOND = {
     2: RIGHT_FLOW_RATE_ML_PER_SECOND
 }
 
-LEFT_DAILY_SCHEDULED_DOSE = 10
+LEFT_DAILY_SCHEDULED_DOSE = 8
 LEFT_DOSES_PER_DAY = 2
 
 RIGHT_DAILY_SCHEDULED_DOSE = 10
@@ -85,7 +85,7 @@ def dose(doser_id: int, mode: str, ml: float):
     record_data_csv(doser_id, mode, ml)
 
 scheduler = BackgroundScheduler()
-scheduler.add_job(dose, args=[2, "Scheduled", LEFT_DAILY_SCHEDULED_DOSE/LEFT_DOSES_PER_DAY], trigger='interval', hours=24/LEFT_DOSES_PER_DAY, id='scheduled_dose')
+scheduler.add_job(dose, args=[1, "Scheduled", LEFT_DAILY_SCHEDULED_DOSE/LEFT_DOSES_PER_DAY], trigger='interval', hours=24/LEFT_DOSES_PER_DAY, id='scheduled_doser_1')
 scheduler.start()
 
 #================================ Fast API ================================#
@@ -176,7 +176,10 @@ def list_obs():
         job_data = [
             {
                 "id": job.id,
-                "next_run": job.next_run_time.strftime("%Y-%m-%d %H:%M:%S")
+                "next_run": job.next_run_time.strftime("%Y-%m-%d %H:%M:%S"),
+                "pump": job.args[0],
+                "mode": job.args[1],
+                "mL": job.args[2]
                 if job.next_run_time else None
             }
             for job in jobs
