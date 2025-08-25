@@ -1,5 +1,5 @@
 # Using lightweight Python
-FROM arm32v7/python:3.7.10-buster
+FROM arm64v8/python:3.11-bookworm
 
 # Setting timezone to EST
 ENV TZ=America/New_York
