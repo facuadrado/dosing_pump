@@ -8,18 +8,16 @@ ENV TZ=America/New_York
 WORKDIR /app
 
 # Install Rpi.GPIO 
-RUN apt-get update 
+RUN apt-get update && apt-get install -y python3-rpi.gpio
 
-RUN apt-get install -y python3-rpi.gpio
+# Copy files to the container
+COPY . /app
 
-# Install FastAPI and Uvicorn
-RUN pip install fastapi uvicorn RPi.GPIO apscheduler
-
-# Copy the app files
-COPY ./app.py .
+# Installing application
+RUN pip install .
 
 # Expose port 8000 for the FastAPI app
 EXPOSE 8000
 
 # Run the FastAPI app
-CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

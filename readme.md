@@ -52,5 +52,5 @@ docker run --privileged -d --restart unless-stopped --mount type=volume,src=dose
 
 Bash into container
 ```shell
-docker exec -it <container-id> /bin/Bash
+docker exec -it <container-id> /bin/bash
 ```
