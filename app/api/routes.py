@@ -1,8 +1,8 @@
-from fastapi import APIRouter, HTTPException, BackgroundTasks, Body
+from fastapi import APIRouter, HTTPException, BackgroundTasks, Body, Query
 from fastapi.responses import JSONResponse, PlainTextResponse
 from app.hardware.pump import PUMP_HEADS
 
-def get_router(pump, scheduler_manager, dosing_db_client):
+def get_router(pump, scheduler_manager, sqlite_client):
     router = APIRouter()
 
     @router.post(
@@ -41,16 +41,17 @@ def get_router(pump, scheduler_manager, dosing_db_client):
         return PlainTextResponse(content=f"Sent command to prime {ml}mL on doser {doser_id}.", status_code=200)
 
     @router.get(
-        "/dosing-report",
-        summary="Get dosing report",
-        description="Fetch all dosing report entries."
+        "/logs",
+        summary="Get raw dose reports",
+        description="Fetch all raw dosing report logs."
     )
-    def get_dosing_report():
+    def get_logs(raw: bool = Query(False)):
         """
-        Fetch all dosing report entries.
+        Fetch all raw dosing report logs.
         """
-        entries = dosing_db_client.fetch_all()
-        return JSONResponse(content=entries, status_code=200)
+        table_name = sqlite_client.RAW_LOGS_TABLE_NAME if raw else sqlite_client.LOGS_TABLE_NAME
+        logs = sqlite_client.fetch_all(table_name)
+        return JSONResponse(content=logs, status_code=200)
 
     @router.post(
         "/schedule",
