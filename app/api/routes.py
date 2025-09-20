@@ -1,10 +1,41 @@
-from fastapi import APIRouter, HTTPException, BackgroundTasks, Body, Query
-from fastapi.responses import JSONResponse, PlainTextResponse
+from fastapi import APIRouter, HTTPException, BackgroundTasks, Body
+from fastapi.responses import JSONResponse
 from app.hardware.pump import PUMP_HEADS
+from typing import Optional
 
 def get_router(pump, scheduler_manager, sqlite_client):
     router = APIRouter()
 
+    @router.post(
+            "/remaining/{head}",
+            summary="Update remaining liquid",
+            description="Update the remaining liquid amount for a specific doser head."
+    )
+    def set_remaining(head: int, ml: float):
+        """
+        Set the remaining liquid amount for a specific doser head.
+        """
+        if head not in PUMP_HEADS:
+            raise HTTPException(status_code=400, detail="Invalid head. Must be 1 or 2.")
+        
+        if ml < 0:
+            raise HTTPException(status_code=400, detail="Remaining amount cannot be negative.")
+        
+        sqlite_client.set_remaining(head, ml)
+        return JSONResponse(content=f"Set remaining amount for head {head} to {ml}mL.", status_code=200)
+
+    @router.get(
+        "/remaining",
+        summary="Get remaining liquid amounts",
+        description="Get the remaining liquid amounts for all doser heads."
+    )
+    def get_remaining():
+        """
+        Get the remaining liquid amounts for all doser heads.
+        """
+        remaining = sqlite_client.get_remaining()
+        return JSONResponse(content=remaining, status_code=200)
+    
     @router.post(
         "/dose/{doser_id}",
         summary="Send a manual dose command",
@@ -22,7 +53,7 @@ def get_router(pump, scheduler_manager, sqlite_client):
             raise HTTPException(status_code=400, detail=f"Invalid dosing amount. Must be greater than 0mL and smaller/equal to {UPPER_LIMIT}mL.")
         
         background_tasks.add_task(pump.dose, doser_id, "Manual", ml)
-        return PlainTextResponse(content=f"Sent dose command for {ml}mL on doser {doser_id}.", status_code=200)
+        return JSONResponse(content=f"Sent dose command for {ml}mL on doser {doser_id}.", status_code=200)
 
     @router.post(
         "/prime/{doser_id}",
@@ -38,20 +69,32 @@ def get_router(pump, scheduler_manager, sqlite_client):
         
         ml = 5.0
         background_tasks.add_task(pump.dose, doser_id, "Primer", ml)
-        return PlainTextResponse(content=f"Sent command to prime {ml}mL on doser {doser_id}.", status_code=200)
+        return JSONResponse(content=f"Sent command to prime {ml}mL on doser {doser_id}.", status_code=200)
 
     @router.get(
         "/logs",
         summary="Get raw dose reports",
         description="Fetch all raw dosing report logs."
     )
-    def get_logs(raw: bool = Query(False)):
+    def get_logs(raw: Optional[bool] = False, days: Optional[int] = 7):
         """
         Fetch all raw dosing report logs.
         """
         table_name = sqlite_client.RAW_LOGS_TABLE_NAME if raw else sqlite_client.LOGS_TABLE_NAME
-        logs = sqlite_client.fetch_all(table_name)
+        logs = sqlite_client.fetch_all_logs(table_name=table_name, days=days)
         return JSONResponse(content=logs, status_code=200)
+    
+    @router.get(
+        "/totals",
+        summary="Get total dosed amounts",
+        description="Get the total dosed amounts for each head, including today's total."
+    )
+    def get_totals():
+        """
+        Get the total dosed amounts for each head, including today's total.
+        """
+        totals = sqlite_client.get_todays_total()
+        return JSONResponse(content=totals, status_code=200)
 
     @router.post(
         "/schedule",
@@ -73,7 +116,7 @@ def get_router(pump, scheduler_manager, sqlite_client):
             raise HTTPException(status_code=400, detail="Dose and doses per day must be positive.")
         
         scheduler_manager.set_schedule(head, total_dose, doses_per_day)
-        return PlainTextResponse(content=f"Schedule set for head {head}.", status_code=200)
+        return JSONResponse(content=f"Schedule set for head {head}.", status_code=200)
 
     @router.get(
         "/schedules",
@@ -85,6 +128,17 @@ def get_router(pump, scheduler_manager, sqlite_client):
         Get all current dosing schedules.
         """
         return JSONResponse(content=scheduler_manager.get_schedules(), status_code=200)
+    
+    @router.get(
+        "/jobs",
+        summary="Get all jobs",
+        description="Get all current dosing jobs."
+    )
+    def get_jobs():
+        """
+        Get all current job schedules.
+        """
+        return JSONResponse(content=scheduler_manager.get_jobs(), status_code=200)
 
     @router.post(
         "/schedule/pause/{head}",
@@ -96,7 +150,7 @@ def get_router(pump, scheduler_manager, sqlite_client):
         Pause the dosing schedule for a specific head.
         """
         scheduler_manager.pause_schedule(head)
-        return PlainTextResponse(content=f"Paused schedule for head {head}.", status_code=200)
+        return JSONResponse(content=f"Paused schedule for head {head}.", status_code=200)
 
     @router.post(
         "/schedule/resume/{head}",
@@ -108,7 +162,7 @@ def get_router(pump, scheduler_manager, sqlite_client):
         Resume the dosing schedule for a specific head.
         """
         scheduler_manager.resume_schedule(head)
-        return PlainTextResponse(content=f"Resumed schedule for head {head}.", status_code=200)
+        return JSONResponse(content=f"Resumed schedule for head {head}.", status_code=200)
 
     @router.post(
         "/schedule/clear/{head}",
@@ -120,6 +174,6 @@ def get_router(pump, scheduler_manager, sqlite_client):
         Clear the dosing schedule for a specific head.
         """
         scheduler_manager.clear_schedule(head)
-        return PlainTextResponse(content=f"Cleared schedule for head {head}.", status_code=200)
+        return JSONResponse(content=f"Cleared schedule for head {head}.", status_code=200)
 
     return router

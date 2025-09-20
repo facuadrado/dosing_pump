@@ -34,3 +34,4 @@ class Pump:
 
         self.sqlite_client.insert_raw_entry(head_id, ml, mode)
         self.sqlite_client.insert_entry(head_id, ml)
+        self.sqlite_client.update_remaining(head_id, ml)

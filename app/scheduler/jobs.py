@@ -1,20 +1,26 @@
 from app.hardware.pump import Pump
-from app.scheduler.schedule_store import load_schedules, save_schedules
+from app.clients.sqlite_client import SQliteClient
+import logging
 
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.jobstores.base import JobLookupError
 
+logger = logging.getLogger(__name__)
+
 class SchedulerManager:
-    def __init__(self, pump: Pump):
+    def __init__(self, pump: Pump, sqlite_client: SQliteClient) -> None:
         self.scheduler = BackgroundScheduler()
         self.pump = pump
-        self.schedules = load_schedules()
+        self.sqlite_client = sqlite_client
+        self.schedules = self.sqlite_client.fetch_all_schedules(self.sqlite_client.SCHEDULES_TABLE_NAME)
         self._add_jobs_from_store()
         self.scheduler.start()
 
     def _add_jobs_from_store(self):
+        logger.info(self.schedules)
         for head, sched in self.schedules.items():
-            self._add_job(int(head), sched["total_dose"], sched["doses_per_day"])
+            if sched["total_dose"] is not None and sched["doses_per_day"] is not None:
+                self._add_job(int(head), sched["total_dose"], sched["doses_per_day"])
 
     def _add_job(self, head, total_dose, doses_per_day):
 
@@ -34,14 +40,9 @@ class SchedulerManager:
             self.scheduler.remove_job(f"scheduled_doser_{head}")
         except JobLookupError:
             pass  # Job does not exist, nothing to remove
-
-        # Save new schedule
-        self.schedules[str(head)] = {
-            "total_dose": total_dose,
-            "doses_per_day": doses_per_day
-        }
-
-        save_schedules(self.schedules)
+        
+        # Update schedules dict and save
+        self.sqlite_client.update_schedule(head, total_dose, doses_per_day)
 
         # Add new job
         self._add_job(head, total_dose, doses_per_day)
@@ -66,15 +67,25 @@ class SchedulerManager:
             self.scheduler.remove_job(job_id)
         except JobLookupError:
             pass  # Job does not exist
+
         # Remove from schedules dict and save
-        self.schedules.pop(str(head), None)
-        save_schedules(self.schedules)
+        self.sqlite_client.update_schedule(head, None, None)
 
     def get_schedules(self):
-        return self.schedules
+        return self.sqlite_client.fetch_all_schedules(self.sqlite_client.SCHEDULES_TABLE_NAME)
 
     def get_jobs(self):
-        return self.scheduler.get_jobs()
+        jobs_list = []
+        for job in self.scheduler.get_jobs():
+            jobs_list.append({
+                "id": job.id,
+                "name": job.name,
+                "next_run_time": str(job.next_run_time),
+                "trigger": str(job.trigger),
+                "args": job.args,
+                "kwargs": job.kwargs
+            })
+        return {"jobs": jobs_list}
 
     def shutdown(self):
         self.scheduler.shutdown(wait=False)

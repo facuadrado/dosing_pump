@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from app.api.routes import get_router
 from app.hardware.pump import Pump
 from app.scheduler.jobs import SchedulerManager
-from app.database.sqlite_client import SQliteClient
+from app.clients.sqlite_client import SQliteClient
 
 def create_app() -> FastAPI:
     # --- Initialize FastAPI app ---
@@ -15,7 +15,7 @@ def create_app() -> FastAPI:
     pump = Pump(sqlite_client)
 
     # --- Set up scheduler manager ---
-    scheduler_manager = SchedulerManager(pump)
+    scheduler_manager = SchedulerManager(pump, sqlite_client)
 
     # --- Register API routes ---
     router = get_router(pump, scheduler_manager, sqlite_client)
